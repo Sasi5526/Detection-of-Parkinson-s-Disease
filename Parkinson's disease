@@ -1,0 +1,103 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug 26 19:25:35 2020
+
+@author: sasim
+"""
+
+#Importing Library
+import pandas as pd
+import matplotlib.pyplot as plt
+import math
+import numpy as np
+import seaborn as sb
+
+#Importing Dataset
+dataset=pd.read_csv('D:\\sasi\\study\\ML 2\\project\\parkinsons.data')
+dataset.info()
+desc = dataset.describe()
+
+#To find the correlation of  variable with price by Pairplot
+sb.pairplot(dataset)
+
+#X & Y variable
+y = dataset['status'].to_numpy()
+
+dataset  = dataset.drop("status",axis=1)
+
+x = dataset
+
+x = x.drop("name",axis=1)
+
+
+# Training & Test 
+# Splitting the dataset into the Training set and Test set
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.25, random_state = 0)
+
+# Feature Scaling
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+x_train = sc.fit_transform(x_train)
+x_test = sc.transform(x_test)
+
+#model building
+from xgboost import XGBClassifier
+model=XGBClassifier()
+model.fit(x_train,y_train)
+
+#Prediction
+y_pred=model.predict(x_test)
+
+# Making the Confusion Matrix & Accuracy& Classification report
+from sklearn.metrics import classification_report,confusion_matrix,accuracy_score
+confusion_matrix(y_test, y_pred)
+acc_knn = accuracy_score(y_test, y_pred)
+classification_report_knn = classification_report(y_test,y_pred,target_names = ['0','1'])
+
+
+#ROC AUC curve to identify wether the model predicts correctly
+from sklearn.metrics import roc_curve, roc_auc_score
+
+results_table = pd.DataFrame(columns = ['models', 'fpr','tpr','auc'])
+
+predictions = {'XGB': y_pred, }
+
+for key in predictions:
+    fpr, tpr, _ = roc_curve(y_test, predictions[key])
+    auc = roc_auc_score(y_test, predictions[key])
+    
+    results_table = results_table.append({'models': key,
+                                         'fpr' : fpr,
+                                         'tpr' : tpr,
+                                         'auc' : auc}, ignore_index=True)
+    
+results_table.set_index('models', inplace=True)
+
+print(results_table)
+
+fig = plt.figure(figsize = (8,6))
+
+for i in results_table.index:
+    plt.plot(results_table.loc[i]['fpr'], 
+             results_table.loc[i]['tpr'], 
+             label = "{}, AUC={:.3f}".format(i, results_table.loc[i]['auc']))
+    
+plt.plot([0,1], [0,1], color = 'black', linestyle = '--')
+
+plt.xticks(np.arange(0.0, 1.1, step=0.1))
+plt.xlabel("False Positive Rate", fontsize=15)
+
+plt.yticks(np.arange(0.0, 1.1, step=0.1))
+plt.ylabel("True Positive Rate", fontsize=15)
+
+plt.title('ROC Curve Analysis', fontweight='bold', fontsize=15)
+plt.legend(prop = {'size':13}, loc = 'lower right')
+
+
+plt.show()
+
+
+
+
+
